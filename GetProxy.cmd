@@ -1,0 +1,2 @@
+REM svcutil http://webservices.gama-system.com/EArchive/ServiceA3.svc?wsdl -noconfig -async -out:EArchiveService.cs
+svcutil http://tstearhiv.posta.si/ServiceA3.svc?wsdl -noconfig -async -out:EArchiveService.cs
