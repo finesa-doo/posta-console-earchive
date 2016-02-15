@@ -66,6 +66,8 @@ namespace FinesaPosta
                 Console.WriteLine("ERROR: file {0} should have .csv extnsion.", csvListFile.Name);
                 return 4; 
             }
+            var errorsFileName = new FileInfo("Errors-" + DateTime.Now.ToFileTime().ToString() + ".log");
+
             MutableDataTable dt;
             try
             {
