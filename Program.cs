@@ -76,7 +76,7 @@ namespace FinesaPosta
                     Console.WriteLine("ERROR: file {0} doesn't contain any rows.", csvListFile.Name);
                     return 4;     
                 }
-                const int requiredColumns = 10;
+                const int requiredColumns = 11;
                 if (dt.Columns.Count() != requiredColumns)
                 {
                     Console.WriteLine("ERROR: file {0} should contain exactly {1} columns.", csvListFile.Name, requiredColumns);
@@ -114,13 +114,14 @@ namespace FinesaPosta
                     var sifraDobavitelja = r["sifradobavitelja"];
                     var davcnaStevilkaDobavitelja = r["davcnastevilkadobavitelja"];
                     var stevilkaRacuna = r["stevilkaracuna"];
+                    var node = r["Node"];
                     DateTime datumIzdajeRacuna = DateTime.ParseExact(r["datumizdajeracuna"].Trim(), "yyyy-dd-M", provider);
                     int leto = Int32.Parse(r["leto"]);
 
                     Guid guidTransaction = Guid.Empty;
                     guidTransaction = SendLogicaDocument(files, naziv, koda, nazivDobavitelja, sifraDobavitelja,
                                             davcnaStevilkaDobavitelja, stevilkaRacuna, datumIzdajeRacuna,
-                                            leto, options.Debug);
+                                            leto, node, options.Debug);
                     r["guid"] = guidTransaction.ToString();
                 }
                 catch (Exception ex)
@@ -148,7 +149,7 @@ namespace FinesaPosta
         }
 
         private static Guid SendLogicaDocument(IEnumerable<FileInfo> files, string Naziv, string Koda, string NazivDobavitelja, string SifraDobavitelja, 
-            string DavcnaStevilkaDobavitelja, string StevilkaRacuna, DateTime DatumIzdajeRacuna, int Leto, bool debug)
+            string DavcnaStevilkaDobavitelja, string StevilkaRacuna, DateTime DatumIzdajeRacuna, int Leto, string Node, bool debug)
         {
             XNamespace posta = "http://schemas.posta.si/earchive/sendldoc.xsd";
             var PDocs = new XElement(posta + "PDocs");
@@ -174,6 +175,10 @@ namespace FinesaPosta
                     new XElement(posta + "Encrypted", false)
                 ));
             }
+
+            root.Add(new XElement(posta + "Nodes",
+                new XElement(posta + "Node", 
+                    new XElement(posta + "Code", Node))));
 
             root.Add(new XElement(posta + "Label", Naziv));
             root.Add(new XElement(posta + "Code", Koda));
@@ -223,7 +228,7 @@ namespace FinesaPosta
             {
                 guidTransaction = SendLogicaDocument(files, options.Naziv, options.Koda, options.NazivDobavitelja, options.SifraDobavitelja,
                                         options.DavcnaStevilkaDobavitelja, options.StevilkaRacuna, options.DatumIzdajeRacuna, 
-                                        options.Leto, options.Debug);
+                                        options.Leto, options.Node, options.Debug);
             }
             catch (Exception ex)
             {

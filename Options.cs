@@ -28,12 +28,14 @@ namespace FinesaPosta
     [Verb("send", HelpText = "Sends files with some metadata to storage.")]
     class SendLDocOptions
     {
+        [Option('c', "node", Required = true, HelpText = "Vozlišče (Node) v katerega naj se shrani dokument.")]
+        public string Node { get; set; }
+
         [Option('f', "files", Required = true, Min=1, HelpText = "Input files to be sent.")]
         public IEnumerable<string> InputFiles { get; set; }
 
         [Option('n', "naziv", Required = true, HelpText = "Naziv dokumenta.")]
         public string Naziv { get; set; }
-
         
         [Option('k', "koda", Required = true, HelpText = "Koda dokumenta.")]
         public string Koda { get; set; }
