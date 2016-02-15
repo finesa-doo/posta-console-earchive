@@ -10,6 +10,7 @@ using CommandLine;
 using System.Xml.Linq;
 using DataAccess;
 using System.Globalization;
+using NLog;
 
 namespace FinesaPosta
 {
@@ -20,6 +21,8 @@ namespace FinesaPosta
 
     class Program
     {
+        private static Logger log = LogManager.GetCurrentClassLogger();
+
         private static EArchiveClient objWS_S;
 
         static string PrettyXml(string xml)
@@ -66,7 +69,6 @@ namespace FinesaPosta
                 Console.WriteLine("ERROR: file {0} should have .csv extnsion.", csvListFile.Name);
                 return 4; 
             }
-            var errorsFileName = new FileInfo("Errors-" + DateTime.Now.ToFileTime().ToString() + ".log");
 
             MutableDataTable dt;
             try
@@ -87,6 +89,7 @@ namespace FinesaPosta
             }
             catch (Exception ex) 
             {
+                log.Error("Error: ", ex);
                 Console.WriteLine("Error: " + ex.Message);
                 return 22;
             }
@@ -128,6 +131,7 @@ namespace FinesaPosta
                 }
                 catch (Exception ex)
                 {
+                    log.Error("Error in loop: ", ex);
                     Console.WriteLine("Error: " + ex.Message);
                     errors++;
                 }
