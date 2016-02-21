@@ -47,7 +47,7 @@ namespace FinesaPosta
         private static int RunGetSchemaAndReturnExitCode(GetSendLDocSchemaOptions options)
         {
             var x = objWS_S.GetSendLDocSchema();
-            Console.WriteLine(PrettyXml(x.OuterXml));
+            log.Debug(PrettyXml(x.OuterXml));
             return 0;
         }
 
@@ -61,12 +61,12 @@ namespace FinesaPosta
             var csvListFile = new FileInfo(options.CsvListFileName);
             if (!csvListFile.Exists)
             {
-                Console.WriteLine("ERROR: file {0} doesn't exist.", csvListFile.Name);
+                log.Error(string.Format("ERROR: file {0} doesn't exist.", csvListFile.Name));
                 return 4; 
             }
             if (!csvListFile.Extension.ToLower().Equals(".csv"))
             {
-                Console.WriteLine("ERROR: file {0} should have .csv extnsion.", csvListFile.Name);
+                log.Error(string.Format("ERROR: file {0} should have .csv extnsion.", csvListFile.Name));
                 return 4; 
             }
 
@@ -77,20 +77,20 @@ namespace FinesaPosta
                 int totalRows = dt.NumRows;
                 if (totalRows < 1)
                 {
-                    Console.WriteLine("ERROR: file {0} doesn't contain any rows.", csvListFile.Name);
+                    log.Fatal(string.Format("ERROR: file {0} doesn't contain any rows.", csvListFile.Name));
                     return 4;     
                 }
                 const int requiredColumns = 11;
                 if (dt.Columns.Count() != requiredColumns)
                 {
-                    Console.WriteLine("ERROR: file {0} should contain exactly {1} columns.", csvListFile.Name, requiredColumns);
+                    log.Fatal(string.Format("ERROR: file {0} should contain exactly {1} columns.", csvListFile.Name, requiredColumns));
                     return 4;     
-                }                
+                }
+                log.Info("Found " + totalRows + " rows.");
             }
             catch (Exception ex) 
             {
-                log.Error("Error: ", ex);
-                Console.WriteLine("Error: " + ex.Message);
+                log.Fatal(ex);
                 return 22;
             }
             var errors = 0;
@@ -106,7 +106,7 @@ namespace FinesaPosta
                         var fi = new FileInfo(f);
                         if (!fi.Exists)
                         {
-                            Console.WriteLine("ERROR: file {0} doesn't exist. Skipping...", fi.Name);
+                            log.Error(string.Format("ERROR: file {0} doesn't exist. Skipping...", fi.Name));
                             errors++;
                             continue;  
                         }
@@ -128,11 +128,11 @@ namespace FinesaPosta
                                             davcnaStevilkaDobavitelja, stevilkaRacuna, datumIzdajeRacuna,
                                             leto, node, options.Debug);
                     r["guid"] = guidTransaction.ToString();
+                    log.Info("Sent document with GUID:" + guidTransaction.ToString() + " Code:" + koda);
                 }
                 catch (Exception ex)
                 {
-                    log.Error("Error in loop: ", ex);
-                    Console.WriteLine("Error: " + ex.Message);
+                    log.Error(ex, "Error in loop: ");
                     errors++;
                 }
             }
@@ -144,7 +144,7 @@ namespace FinesaPosta
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error saving: " + ex.Message);
+                log.Error(ex, "Error saving: ");
                 return 222;
             }
 
@@ -200,7 +200,7 @@ namespace FinesaPosta
 
             if (debug)
             {
-                Console.WriteLine(root.ToXmlElement().OuterXml);
+                log.Debug(root.ToXmlElement().OuterXml);
             }
 
             XmlElement final = GetElement("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + root.ToXmlElement().OuterXml);
@@ -220,14 +220,13 @@ namespace FinesaPosta
                 var fi = new FileInfo(f); 
                 if (!fi.Exists)
                 {
-                    Console.WriteLine("ERROR: file {0} doesn't exist.", fi.Name);
+                    log.Error(string.Format("ERROR: file {0} doesn't exist.", fi.Name));
                     return 4;
                 }
                 files.Add(fi);
             }
 
-            Console.WriteLine("SendLDoc Method...\n");
-            Console.WriteLine("With files: {0}", string.Join("; ", options.InputFiles.ToArray()));
+            log.Info(string.Format("SendLDoc Method...\nWith files: {0}", string.Join("; ", options.InputFiles.ToArray())));
 
             Guid guidTransaction = Guid.Empty;
             try
@@ -238,10 +237,10 @@ namespace FinesaPosta
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error: " + ex.Message);
+                log.Error(ex);
                 return 100;
             }
-            Console.WriteLine("Transaction GUID: " + guidTransaction);
+            log.Info("Transaction GUID: " + guidTransaction);
             return 0;
         }
 
@@ -255,12 +254,13 @@ namespace FinesaPosta
 
         private static int RunGetAndReturnExitCode(GetLDocOptions opts)
         {
-            Console.WriteLine("GET");
+            log.Info("GET");
             return 1;
         }
 
         static int Main(string[] args)
         {
+            log.Info("Start.");
             var parser = new Parser(with => { with.HelpWriter = Console.Out; with.EnableDashDash = true; }); 
             try
             {
@@ -268,14 +268,13 @@ namespace FinesaPosta
                 var isRunning = objWS_S.IsRunning();
                 if (!isRunning) 
                 {
-                    Console.WriteLine("Connection to webservice failed. Service is not running.");
+                    log.Error("Connection to webservice failed. Service is not running.");
                     return 2;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Connection to webservice failed. Is certificate configured properly?");
-                Console.WriteLine(ex.Message);
+                log.Error(ex, "Connection to webservice failed. Is certificate configured properly?");
                 return 1;
             }
 
@@ -288,7 +287,7 @@ namespace FinesaPosta
                     errs => 1
                 );
             objWS_S.Close();
-            Console.WriteLine("All done.");
+            log.Info("All done.");
             return exitCode;
         }
     }
