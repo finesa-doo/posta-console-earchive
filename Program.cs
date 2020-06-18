@@ -11,45 +11,22 @@ using System.Xml.Linq;
 using DataAccess;
 using System.Globalization;
 using NLog;
+using PS.EA.SDK;
+using System.ServiceModel.Configuration;
+using PS.EA.SDK.Model;
 
 namespace FinesaPosta
 {
-    /*
-    https://tstearhiv.posta.si/Default.aspx
-     */
-
-
     class Program
     {
         private static Logger log = LogManager.GetCurrentClassLogger();
 
-        private static EArchiveClient objWS_S;
-
-        static string PrettyXml(string xml)
-        {
-            var stringBuilder = new StringBuilder();
-
-            var element = XElement.Parse(xml);
-
-            var settings = new XmlWriterSettings();
-            settings.OmitXmlDeclaration = true;
-            settings.Indent = true;
-            settings.NewLineOnAttributes = true;
-
-            using (var xmlWriter = XmlWriter.Create(stringBuilder, settings))
-            {
-                element.Save(xmlWriter);
-            }
-
-            return stringBuilder.ToString();
-        }
-
-        private static int RunGetSchemaAndReturnExitCode(GetSendLDocSchemaOptions options)
+        /*private static int RunGetSchemaAndReturnExitCode(GetSendLDocSchemaOptions options)
         {
             var x = objWS_S.GetSendLDocSchema();
             log.Debug(PrettyXml(x.OuterXml));
             return 0;
-        }
+        }*/
 
         private static int RunSendFromCsvAndReturnExitCode(SendLDocCSVOptions options)
         {
@@ -203,9 +180,9 @@ namespace FinesaPosta
                 log.Debug(root.ToXmlElement().OuterXml);
             }
 
-            XmlElement final = GetElement("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + root.ToXmlElement().OuterXml);
-
-            return objWS_S.SendLDoc(root.ToXmlElement());
+            // XmlElement final = GetElement("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + root.ToXmlElement().OuterXml);
+            throw new NotImplementedException();
+            return Guid.NewGuid(); 
         }
 
         private static int RunSendAndReturnExitCode(SendLDocOptions options)
@@ -244,50 +221,76 @@ namespace FinesaPosta
             return 0;
         }
 
-        private static XmlElement GetElement(string xml)
+        private static byte[] GetRandomFile()
         {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(xml);
-            return doc.DocumentElement;
+            Random rnd = new Random();
+            Byte[] b = new Byte[100];
+            rnd.NextBytes(b);
+            return b;
         }
 
+        private static X509Certificate2 GetCertificate()
+        {
+            using (X509Store storex = new X509Store(StoreName.My, StoreLocation.CurrentUser))
+            {
+                storex.Open(OpenFlags.ReadOnly);
+                X509Certificate2Collection certificatesx = storex.Certificates.Find(X509FindType.FindBySerialNumber, //certificateName,
+                            "3B48F17B",
+                            //"86 51 c0 35 93 ae 6a 9d 0d 69 86 44 3b 8e 11 4f 19 a9 8c a1",
+                            true);
+
+                X509Certificate2 cert = certificatesx[0];
+                
+                storex.Close();
+                return cert;
+            }
+            // string results = cert.GetSerialNumberString();
+        }
 
         private static int RunGetAndReturnExitCode(GetLDocOptions opts)
         {
-            log.Info("GET");
+            var cert = GetCertificate();
+            var tokenClient = new EAAuth("https://tstearchps.posta.si/WEBAUTH/Token", cert);
+            var client = new EAClient("https://tstearchps.posta.si/WEBAUTH/Token");
+            var token = tokenClient.GetBearerToken();
+            //var nodes = client.GetAllNodes(token);
+
+            var aMetadata = new Metadata();
+            aMetadata.Author = "Jože";
+            aMetadata.FileName = "burek";
+            aMetadata.FileExtension = "dat";
+            aMetadata.NodeGuid = new Guid("85d28d6c-fe98-ea11-90f4-001dd8b720a0");
+
+//            prejetiRacuni.
+
+            var guid = client.AddDocument(token, GetRandomFile(), aMetadata);
+
+            log.Info($"GET {guid}");
+            
+
+            //  https://tstearchps.posta.si/WEBAPI
+
             return 1;
         }
 
         static int Main(string[] args)
         {
             log.Info("Start.");
-            var parser = new Parser(with => { with.HelpWriter = Console.Out; with.EnableDashDash = true; }); 
-            try
-            {
-                objWS_S = new EArchiveClient("EArchiveDefaultTest");
-                var isRunning = objWS_S.IsRunning();
-                if (!isRunning) 
-                {
-                    log.Error("Connection to webservice failed. Service is not running.");
-                    return 2;
-                }
-            }
-            catch (Exception ex)
-            {
-                log.Error(ex, "Connection to webservice failed. Is certificate configured properly?");
-                return 1;
-            }
+            var parser = new Parser(with => { with.HelpWriter = Console.Out; with.EnableDashDash = true; });
+
+            // sendfromcsv --file=test.csv
 
             var result = parser.ParseArguments<SendLDocOptions, GetLDocOptions, SendLDocCSVOptions, GetSendLDocSchemaOptions>(args);
             var exitCode = result.MapResult(
                     (SendLDocOptions opts) => RunSendAndReturnExitCode(opts),
                     (GetLDocOptions opts) => RunGetAndReturnExitCode(opts),
                     (SendLDocCSVOptions opts) => RunSendFromCsvAndReturnExitCode(opts),
-                    (GetSendLDocSchemaOptions opts) => RunGetSchemaAndReturnExitCode(opts),
+                    // (GetSendLDocSchemaOptions opts) => RunTest(opts),
                     errs => 1
                 );
-            objWS_S.Close();
+            
             log.Info("All done.");
+            Console.ReadKey();
             return exitCode;
         }
     }
