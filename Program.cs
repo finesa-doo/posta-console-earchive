@@ -21,13 +21,6 @@ namespace FinesaPosta
     {
         private static Logger log = LogManager.GetCurrentClassLogger();
 
-        /*private static int RunGetSchemaAndReturnExitCode(GetSendLDocSchemaOptions options)
-        {
-            var x = objWS_S.GetSendLDocSchema();
-            log.Debug(PrettyXml(x.OuterXml));
-            return 0;
-        }*/
-
         private static int RunSendFromCsvAndReturnExitCode(SendLDocCSVOptions options)
         {
             var provider = CultureInfo.CreateSpecificCulture("en-US");
@@ -76,18 +69,19 @@ namespace FinesaPosta
             {
                 try
                 {
-                    var inputFiles = r["files"].Split(';');
-                    var files = new List<FileInfo>();
-                    foreach (var f in inputFiles)
+                    var inputFile = r["files"].Split(';');
+
+                    if (inputFile.Count() != 1)
                     {
-                        var fi = new FileInfo(f);
-                        if (!fi.Exists)
-                        {
-                            log.Error(string.Format("ERROR: file {0} doesn't exist. Skipping...", fi.Name));
-                            errors++;
-                            continue;  
-                        }
-                        files.Add(fi);
+                        throw new Exception("multiple files not supported");
+                    }
+
+                    var fi = new FileInfo(inputFile[0]);
+                    if (!fi.Exists)
+                    {
+                        log.Error(string.Format("ERROR: file {0} doesn't exist. Skipping...", fi.Name));
+                        errors++;
+                        continue;
                     }
 
                     var naziv = r["naziv"];
@@ -100,16 +94,16 @@ namespace FinesaPosta
                     DateTime datumIzdajeRacuna = DateTime.ParseExact(r["datumizdajeracuna"].Trim(), "yyyy-dd-M", provider);
                     int leto = Int32.Parse(r["leto"]);
 
-                    Guid guidTransaction = Guid.Empty;
-                    guidTransaction = SendLogicaDocument(files, naziv, koda, nazivDobavitelja, sifraDobavitelja,
+                    Guid guidTransaction = SendDocument(options.FindCertificateByValue, options.IsDevelopment, fi, naziv, koda, nazivDobavitelja, sifraDobavitelja,
                                             davcnaStevilkaDobavitelja, stevilkaRacuna, datumIzdajeRacuna,
-                                            leto, node, options.Debug);
+                                            leto, node);
+
                     r["guid"] = guidTransaction.ToString();
                     log.Info("Sent document with GUID:" + guidTransaction.ToString() + " Code:" + koda);
                 }
                 catch (Exception ex)
                 {
-                    log.Error(ex, "Error in loop: ");
+                    log.Error(ex, $"Error in loop: {ex.Message}");
                     errors++;
                 }
             }
@@ -131,6 +125,62 @@ namespace FinesaPosta
                 return 0;
         }
 
+        private static Guid SendDocument(string findByCertificate, bool isDevelopment, FileInfo fi, string Naziv, string Koda, string NazivDobavitelja, string SifraDobavitelja,
+            string DavcnaStevilkaDobavitelja, string StevilkaRacuna, DateTime DatumIzdajeRacuna, int Leto, string Node)
+        {
+            var cert = GetCertificate(findByCertificate);
+            var tokenClient = new EAAuth(isDevelopment ? "https://tstearchps.posta.si/WEBAUTH/Token" : "https://earchps.posta.si/WEBAUTH/Token", cert);
+            var client = new EAClient(isDevelopment ? "https://tstearchps.posta.si/WEBAPI/api" : "https://earchps.posta.si/WEBAPI/api");
+            var token = tokenClient.GetBearerToken();
+
+            var nodes = client.GetAllNodes(token);
+            var node = nodes.Where(n => n.Code == Node).FirstOrDefault();
+            if (node == null)
+            {
+                throw new Exception("didn't find node using Node parameter");
+            }
+
+            var aMetadata = new Metadata();
+            aMetadata.NodeGuid = node.NodeGuid;
+            aMetadata.FileName = fi.Name.Substring(0, fi.Name.Length - fi.Extension.Length);
+            aMetadata.FileExtension = fi.Extension;
+            aMetadata.DigitalSignatureType = PS.EA.SDK.Enums.DigitalSignatureType.None;
+
+            aMetadata.CreatedDate = DatumIzdajeRacuna;
+            aMetadata.Title = Naziv;
+            aMetadata.Code = Koda;
+            aMetadata.Receiver = NazivDobavitelja;
+
+            /*
+            var metaType = new CustomMetadataType 
+            { 
+                DataType = "string", 
+                CustomMetadataTypeGuid = new Guid("d0e38d4e-bb97-481d-bfa4-feb11e45b495"), 
+                Label = "sifraDobavitelja",
+                Format = "bla", 
+                Length = 100, 
+                Searchable = true
+            };
+            var sifraDobaviteljaMeta = new CustomMetadata { CustomMetadataType = metaType, Value = SifraDobavitelja };
+            aMetadata.CustomMetadatas = new List<CustomMetadata>();
+            aMetadata.CustomMetadatas.Add(sifraDobaviteljaMeta); */
+
+            byte[] bytes = File.ReadAllBytes(fi.FullName);
+            return client.AddDocument(token,  bytes, aMetadata);
+
+            // aMetadata.CustomMetadatas.Add(new CustomMetadata { CustomMetadataType =  } })
+
+
+            /*
+            root.Add(new XElement(posta + "SifraDobavitelja", SifraDobavitelja));
+            root.Add(new XElement(posta + "DavcnaStevilkaDobavitelja", DavcnaStevilkaDobavitelja));
+            root.Add(new XElement(posta + "StevilkaRacuna", StevilkaRacuna));
+            root.Add(new XElement(posta + "DatumIzdajeRacuna", DatumIzdajeRacuna));
+            root.Add(new XElement(posta + "Leto", Leto));
+            */
+        }
+
+        /*
         private static Guid SendLogicaDocument(IEnumerable<FileInfo> files, string Naziv, string Koda, string NazivDobavitelja, string SifraDobavitelja, 
             string DavcnaStevilkaDobavitelja, string StevilkaRacuna, DateTime DatumIzdajeRacuna, int Leto, string Node, bool debug)
         {
@@ -183,34 +233,29 @@ namespace FinesaPosta
             // XmlElement final = GetElement("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + root.ToXmlElement().OuterXml);
             throw new NotImplementedException();
             return Guid.NewGuid(); 
-        }
+        }*/
 
         private static int RunSendAndReturnExitCode(SendLDocOptions options)
         {
-            if (options.InputFiles.Count() < 1)
+            if (string.IsNullOrWhiteSpace(options.InputFile))
             {
                 return 3; // this shouldn't happen anyway, because parameter is already required
             }
-            var  files = new List<FileInfo>();
-            foreach (var f in options.InputFiles)
+            var fi = new FileInfo(options.InputFile);
+            if (!fi.Exists)
             {
-                var fi = new FileInfo(f); 
-                if (!fi.Exists)
-                {
-                    log.Error(string.Format("ERROR: file {0} doesn't exist.", fi.Name));
-                    return 4;
-                }
-                files.Add(fi);
+                log.Error(string.Format("ERROR: file {0} doesn't exist.", fi.Name));
+                return 4;
             }
 
-            log.Info(string.Format("SendLDoc Method...\nWith files: {0}", string.Join("; ", options.InputFiles.ToArray())));
+            log.Info($"SendLDoc Method...\nWith file: {options.InputFile}");
 
             Guid guidTransaction = Guid.Empty;
             try
             {
-                guidTransaction = SendLogicaDocument(files, options.Naziv, options.Koda, options.NazivDobavitelja, options.SifraDobavitelja,
-                                        options.DavcnaStevilkaDobavitelja, options.StevilkaRacuna, options.DatumIzdajeRacuna, 
-                                        options.Leto, options.Node, options.Debug);
+                guidTransaction = SendDocument(options.FindCertificateByValue, options.IsDevelopment, fi, options.Naziv, options.Koda, options.NazivDobavitelja, options.SifraDobavitelja,
+                                        options.DavcnaStevilkaDobavitelja, options.StevilkaRacuna, options.DatumIzdajeRacuna,
+                                        options.Leto, options.Node);
             }
             catch (Exception ex)
             {
@@ -221,56 +266,23 @@ namespace FinesaPosta
             return 0;
         }
 
-        private static byte[] GetRandomFile()
-        {
-            Random rnd = new Random();
-            Byte[] b = new Byte[100];
-            rnd.NextBytes(b);
-            return b;
-        }
-
-        private static X509Certificate2 GetCertificate()
+        private static X509Certificate2 GetCertificate(string findByValue)
         {
             using (X509Store storex = new X509Store(StoreName.My, StoreLocation.CurrentUser))
             {
                 storex.Open(OpenFlags.ReadOnly);
-                X509Certificate2Collection certificatesx = storex.Certificates.Find(X509FindType.FindBySerialNumber, //certificateName,
-                            "3B48F17B",
-                            //"86 51 c0 35 93 ae 6a 9d 0d 69 86 44 3b 8e 11 4f 19 a9 8c a1",
-                            true);
+                X509Certificate2Collection certificatesx = storex.Certificates.Find(X509FindType.FindBySerialNumber, findByValue, true);
+
+                if (certificatesx == null || certificatesx.Count != 1)
+                {
+                    throw new Exception("Certificate not found.");
+                }
 
                 X509Certificate2 cert = certificatesx[0];
                 
                 storex.Close();
                 return cert;
             }
-            // string results = cert.GetSerialNumberString();
-        }
-
-        private static int RunGetAndReturnExitCode(GetLDocOptions opts)
-        {
-            var cert = GetCertificate();
-            var tokenClient = new EAAuth("https://tstearchps.posta.si/WEBAUTH/Token", cert);
-            var client = new EAClient("https://tstearchps.posta.si/WEBAUTH/Token");
-            var token = tokenClient.GetBearerToken();
-            //var nodes = client.GetAllNodes(token);
-
-            var aMetadata = new Metadata();
-            aMetadata.Author = "Jože";
-            aMetadata.FileName = "burek";
-            aMetadata.FileExtension = "dat";
-            aMetadata.NodeGuid = new Guid("85d28d6c-fe98-ea11-90f4-001dd8b720a0");
-
-//            prejetiRacuni.
-
-            var guid = client.AddDocument(token, GetRandomFile(), aMetadata);
-
-            log.Info($"GET {guid}");
-            
-
-            //  https://tstearchps.posta.si/WEBAPI
-
-            return 1;
         }
 
         static int Main(string[] args)
@@ -280,10 +292,9 @@ namespace FinesaPosta
 
             // sendfromcsv --file=test.csv
 
-            var result = parser.ParseArguments<SendLDocOptions, GetLDocOptions, SendLDocCSVOptions, GetSendLDocSchemaOptions>(args);
+            var result = parser.ParseArguments<SendLDocOptions, SendLDocCSVOptions, GetSendLDocSchemaOptions>(args);
             var exitCode = result.MapResult(
                     (SendLDocOptions opts) => RunSendAndReturnExitCode(opts),
-                    (GetLDocOptions opts) => RunGetAndReturnExitCode(opts),
                     (SendLDocCSVOptions opts) => RunSendFromCsvAndReturnExitCode(opts),
                     // (GetSendLDocSchemaOptions opts) => RunTest(opts),
                     errs => 1

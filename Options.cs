@@ -31,8 +31,8 @@ namespace FinesaPosta
         [Option('c', "node", Required = true, HelpText = "Vozlišče (Node) v katerega naj se shrani dokument.")]
         public string Node { get; set; }
 
-        [Option('f', "files", Required = true, Min=1, HelpText = "Input files to be sent.")]
-        public IEnumerable<string> InputFiles { get; set; }
+        [Option('f', "file", Required = true, HelpText = "Input file.")]
+        public string InputFile { get; set; }
 
         [Option('n', "naziv", Required = true, HelpText = "Naziv dokumenta.")]
         public string Naziv { get; set; }
@@ -58,16 +58,19 @@ namespace FinesaPosta
         [Option('i', "datumizdajeracuna", Required = true, HelpText = "Datum izdaje računa.")]
         public DateTime DatumIzdajeRacuna  { get; set; }
 
-        [Option('t', "debug", Default= false, HelpText = "Prikaži XML pred pošiljanjem.")]
-        public bool Debug { get; set; }
+        [Option('c', "certificate", Required = true, HelpText = "The signature of certificate for connection to server.")]
+        public string FindCertificateByValue { get; set; }
+
+        [Option('d', "devel", Default = false, HelpText = "Connect to development environment.")]
+        public bool IsDevelopment { get; set; }
     }
 
-    [Verb("get", HelpText = "Gets file metadata. Not implemented yet.")]
+    /*[Verb("get", HelpText = "Gets file metadata. Not implemented yet.")]
     class GetLDocOptions
     {
         [Option('g', "guid", Required = true, HelpText = "GUID of the file.")]
         public string Guid { get; set; }
-    }
+    }*/
 
     [Verb("schema", HelpText = "Gets schema for sending LDOC (which includes custom metadata fields.")]
     class GetSendLDocSchemaOptions
@@ -80,7 +83,10 @@ namespace FinesaPosta
         [Option('f', "file", Required = true, HelpText = "CSV file with list of documents.")]
         public string CsvListFileName { get; set; }
 
-        [Option('t', "debug", Default = false, HelpText = "Prikaži XML pred pošiljanjem.")]
-        public bool Debug { get; set; }
+        [Option('c', "certificate", Required = true, HelpText = "The signature of certificate for connection to server.")]
+        public string FindCertificateByValue { get; set; }
+
+        [Option('d', "devel", Default = false, HelpText = "Connect to development environment.")]
+        public bool IsDevelopment { get; set; }
     }
 }

@@ -11,7 +11,6 @@ namespace FinesaPosta
     {
         public  void TesT()
         {
-            string certificateName = "CN=Samo Fabcic + SERIALNUMBER=2456825412027, OU=individuals, OU=sigen-ca, O=state-institutions, C=si"; //name found in the var xname
             X509Store storex = new X509Store(StoreName.My, StoreLocation.CurrentUser);
             storex.Open(OpenFlags.ReadOnly);
             X509Certificate2Collection certificatesx = storex.Certificates.Find(X509FindType.FindBySerialNumber, //certificateName,

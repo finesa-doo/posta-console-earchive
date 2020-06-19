@@ -1,4 +1,4 @@
 files;naziv;koda;nazivdobavitelja;sifradobavitelja;davcnastevilkadobavitelja;stevilkaracuna;datumizdajeracuna;leto;guid;node
-"demo.pdf;demo.pdf";Prvi test;ena;Samo;SSS;SI12345678;1;2017-31-1;2022;;prejetiRacuni
-"demo.pdf;demo.pdf;demo.pdf";Drugi test;dva ;Samo;SSS;SI12345678;3;2017-31-1;2022;;prejetiRacuni
+"demo.pdf";Prvi test;ena;Samo;SSS;SI12345678;1;2017-31-1;2022;;prejetiRacuni
+"demo.pdf";Drugi test;dva ;Samo;SSS;SI12345678;3;2017-31-1;2022;;prejetiRacuni
 demo.pdf;Tretji test;tri;Samo;SSS;SI12345678;2;2017-31-1;2022;;prejetiRacuni
