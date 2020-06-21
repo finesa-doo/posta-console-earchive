@@ -130,12 +130,16 @@ namespace FinesaPosta
                 return 0;
         }
 
+        private static EAClient GetClient(EAAuth tokenClient, bool isDevelopment)
+        {
+            return new EAClient(isDevelopment ? "https://tstearchps.posta.si/WEBAPI/api" : "https://earchps.posta.si/WEBAPI/api");
+        }
+
         private static Guid SendDocument(EAAuth tokenClient, bool isDevelopment, FileInfo fi, string Naziv, string Koda, string NazivDobavitelja, string SifraDobavitelja,
             string DavcnaStevilkaDobavitelja, string StevilkaRacuna, DateTime DatumIzdajeRacuna, int Leto, string Node)
         {
-            var client = new EAClient(isDevelopment ? "https://tstearchps.posta.si/WEBAPI/api" : "https://earchps.posta.si/WEBAPI/api");
+            var client = GetClient(tokenClient, isDevelopment);
             var token = tokenClient.GetBearerToken();
-
             var nodes = client.GetAllNodes(token);
             var node = nodes.Where(n => n.Code == Node).FirstOrDefault();
             if (node == null)
@@ -253,6 +257,35 @@ namespace FinesaPosta
             return tokenClient;
         }
 
+        private static int ListNodesAndReturnExitCode(ListNodesOptions options)
+        {
+            var tokenClient = GetAuthClient(options.FindCertificateByValue, options.IsDevelopment);
+            if (tokenClient == null)
+            {
+                return 6;
+            }
+
+            var client = GetClient(tokenClient, options.IsDevelopment);
+            try
+            {
+                var nodes = client.GetAllNodes(tokenClient.GetBearerToken());
+                if (nodes == null || nodes.Count() == 0)
+                {
+                    log.Info($"No nodes found.");
+                }
+                foreach(var n in nodes)
+                {
+                    log.Info($"{n.Code} {n.NodeGuid} {n.Label}");
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, $"GetAllNodes ERROR: {ex.Message}");
+                return 7;
+            }
+            return 0;
+        }
+
         private static int RunSendAndReturnExitCode(SendLDocOptions options)
         {
             if (string.IsNullOrWhiteSpace(options.InputFile))
@@ -314,10 +347,11 @@ namespace FinesaPosta
 
             // sendfromcsv --file=test.csv
 
-            var result = parser.ParseArguments<SendLDocOptions, SendLDocCSVOptions, GetSendLDocSchemaOptions>(args);
+            var result = parser.ParseArguments<SendLDocOptions, SendLDocCSVOptions, ListNodesOptions>(args);
             var exitCode = result.MapResult(
                     (SendLDocOptions opts) => RunSendAndReturnExitCode(opts),
                     (SendLDocCSVOptions opts) => RunSendFromCsvAndReturnExitCode(opts),
+                    (ListNodesOptions opts) => ListNodesAndReturnExitCode(opts),
                     errs => 1
                 );
             

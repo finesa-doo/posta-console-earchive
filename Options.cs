@@ -72,9 +72,14 @@ namespace FinesaPosta
         public string Guid { get; set; }
     }*/
 
-    [Verb("schema", HelpText = "Gets schema for sending LDOC (which includes custom metadata fields.")]
-    class GetSendLDocSchemaOptions
+    [Verb("listnodes", HelpText = "List nodes.")]
+    class ListNodesOptions
     {
+        [Option('c', "certificate", Required = true, HelpText = "The signature of certificate for connection to server.")]
+        public string FindCertificateByValue { get; set; }
+
+        [Option('d', "devel", Default = false, HelpText = "Connect to development environment.")]
+        public bool IsDevelopment { get; set; }
     }
 
     [Verb("sendfromcsv", HelpText = "Sends multiple files with some metadata to storage. List of files is read from CSV")]
