@@ -65,6 +65,12 @@ namespace FinesaPosta
             }
             var errors = 0;
 
+            var tokenClient = GetAuthClient(options.FindCertificateByValue, options.IsDevelopment);
+            if (tokenClient == null)
+            {
+                return 6;
+            }
+
             foreach (var r in dt.Rows)
             {
                 try
@@ -93,8 +99,7 @@ namespace FinesaPosta
                     var node = r["Node"];
                     DateTime datumIzdajeRacuna = DateTime.ParseExact(r["datumizdajeracuna"].Trim(), "yyyy-dd-M", provider);
                     int leto = Int32.Parse(r["leto"]);
-
-                    Guid guidTransaction = SendDocument(options.FindCertificateByValue, options.IsDevelopment, fi, naziv, koda, nazivDobavitelja, sifraDobavitelja,
+                    Guid guidTransaction = SendDocument(tokenClient, options.IsDevelopment, fi, naziv, koda, nazivDobavitelja, sifraDobavitelja,
                                             davcnaStevilkaDobavitelja, stevilkaRacuna, datumIzdajeRacuna,
                                             leto, node);
 
@@ -125,11 +130,9 @@ namespace FinesaPosta
                 return 0;
         }
 
-        private static Guid SendDocument(string findByCertificate, bool isDevelopment, FileInfo fi, string Naziv, string Koda, string NazivDobavitelja, string SifraDobavitelja,
+        private static Guid SendDocument(EAAuth tokenClient, bool isDevelopment, FileInfo fi, string Naziv, string Koda, string NazivDobavitelja, string SifraDobavitelja,
             string DavcnaStevilkaDobavitelja, string StevilkaRacuna, DateTime DatumIzdajeRacuna, int Leto, string Node)
         {
-            var cert = GetCertificate(findByCertificate);
-            var tokenClient = new EAAuth(isDevelopment ? "https://tstearchps.posta.si/WEBAUTH/Token" : "https://earchps.posta.si/WEBAUTH/Token", cert);
             var client = new EAClient(isDevelopment ? "https://tstearchps.posta.si/WEBAPI/api" : "https://earchps.posta.si/WEBAPI/api");
             var token = tokenClient.GetBearerToken();
 
@@ -235,6 +238,21 @@ namespace FinesaPosta
             return Guid.NewGuid(); 
         }*/
 
+        private static EAAuth GetAuthClient(string findCertificateByValue, bool isDevelopment)
+        {
+            EAAuth tokenClient = null;
+            try
+            {
+                var cert = GetCertificate(findCertificateByValue);
+                tokenClient = new EAAuth(isDevelopment ? "https://tstearchps.posta.si/WEBAUTH/Token" : "https://earchps.posta.si/WEBAUTH/Token", cert);
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex, $"AUTH ERROR: {ex.Message}");
+            }
+            return tokenClient;
+        }
+
         private static int RunSendAndReturnExitCode(SendLDocOptions options)
         {
             if (string.IsNullOrWhiteSpace(options.InputFile))
@@ -247,13 +265,17 @@ namespace FinesaPosta
                 log.Error(string.Format("ERROR: file {0} doesn't exist.", fi.Name));
                 return 4;
             }
+            var tokenClient = GetAuthClient(options.FindCertificateByValue, options.IsDevelopment);
+            if (tokenClient == null)
+            {
+                return 6;
+            }
 
             log.Info($"SendLDoc Method...\nWith file: {options.InputFile}");
-
             Guid guidTransaction = Guid.Empty;
             try
             {
-                guidTransaction = SendDocument(options.FindCertificateByValue, options.IsDevelopment, fi, options.Naziv, options.Koda, options.NazivDobavitelja, options.SifraDobavitelja,
+                guidTransaction = SendDocument(tokenClient, options.IsDevelopment, fi, options.Naziv, options.Koda, options.NazivDobavitelja, options.SifraDobavitelja,
                                         options.DavcnaStevilkaDobavitelja, options.StevilkaRacuna, options.DatumIzdajeRacuna,
                                         options.Leto, options.Node);
             }
@@ -296,12 +318,10 @@ namespace FinesaPosta
             var exitCode = result.MapResult(
                     (SendLDocOptions opts) => RunSendAndReturnExitCode(opts),
                     (SendLDocCSVOptions opts) => RunSendFromCsvAndReturnExitCode(opts),
-                    // (GetSendLDocSchemaOptions opts) => RunTest(opts),
                     errs => 1
                 );
             
             log.Info("All done.");
-            Console.ReadKey();
             return exitCode;
         }
     }
