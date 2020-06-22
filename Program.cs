@@ -64,7 +64,7 @@ namespace FinesaPosta
                 return 22;
             }
             var errors = 0;
-
+            log.Info($"Is devel: {options.IsDevelopment}.");
             var tokenClient = GetAuthClient(options.FindCertificateByValue, options.IsDevelopment);
             if (tokenClient == null)
             {
@@ -154,7 +154,7 @@ namespace FinesaPosta
             aMetadata.DigitalSignatureType = PS.EA.SDK.Enums.DigitalSignatureType.None;
 
             aMetadata.CreatedDate = DatumIzdajeRacuna;
-            aMetadata.Title = Naziv;
+            aMetadata.Title = Koda;
             aMetadata.Code = Koda;
             aMetadata.Receiver = NazivDobavitelja;
 
@@ -259,6 +259,8 @@ namespace FinesaPosta
 
         private static int ListNodesAndReturnExitCode(ListNodesOptions options)
         {
+            log.Info($"Is devel: {options.IsDevelopment}.");
+
             var tokenClient = GetAuthClient(options.FindCertificateByValue, options.IsDevelopment);
             if (tokenClient == null)
             {
@@ -355,7 +357,8 @@ namespace FinesaPosta
                     errs => 1
                 );
             
-            log.Info("All done.");
+            log.Info("Press any key.");
+            Console.ReadKey();
             return exitCode;
         }
     }
