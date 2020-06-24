@@ -147,6 +147,8 @@ namespace FinesaPosta
                 throw new Exception("didn't find node using Node parameter");
             }
 
+            var metas = client.GetCustomMetadataTypes(tokenClient.GetBearerToken());
+
             var aMetadata = new Metadata();
             aMetadata.NodeGuid = node.NodeGuid;
             aMetadata.FileName = fi.Name.Substring(0, fi.Name.Length - fi.Extension.Length);
@@ -157,90 +159,40 @@ namespace FinesaPosta
             aMetadata.Title = Koda;
             aMetadata.Code = Koda;
             aMetadata.Receiver = NazivDobavitelja;
-
-            /*
-            var metaType = new CustomMetadataType 
-            { 
-                DataType = "string", 
-                CustomMetadataTypeGuid = new Guid("d0e38d4e-bb97-481d-bfa4-feb11e45b495"), 
-                Label = "sifraDobavitelja",
-                Format = "bla", 
-                Length = 100, 
-                Searchable = true
-            };
-            var sifraDobaviteljaMeta = new CustomMetadata { CustomMetadataType = metaType, Value = SifraDobavitelja };
             aMetadata.CustomMetadatas = new List<CustomMetadata>();
-            aMetadata.CustomMetadatas.Add(sifraDobaviteljaMeta); */
+
+            foreach (var md in metas)
+            {
+                CustomMetadata aMd = null;
+                if (md.Label == "Šifra partnerja")
+                {
+                    aMd = new CustomMetadata { CustomMetadataType = new CustomMetadataType { CustomMetadataTypeGuid = md.CustomMetadataTypeGuid }, Value = SifraDobavitelja };
+                }
+                if (md.Label == "Davčna številka partnerja")
+                {
+                    aMd = new CustomMetadata { CustomMetadataType = new CustomMetadataType { CustomMetadataTypeGuid = md.CustomMetadataTypeGuid }, Value = DavcnaStevilkaDobavitelja };
+                }
+                if (md.Label == "Številka računa")
+                {
+                    aMd = new CustomMetadata { CustomMetadataType = new CustomMetadataType { CustomMetadataTypeGuid = md.CustomMetadataTypeGuid }, Value = StevilkaRacuna };
+                }
+                if (md.Label == "Datum izdaje računa")
+                {
+                    // aMd = new CustomMetadata { CustomMetadataType = new CustomMetadataType { CustomMetadataTypeGuid = md.CustomMetadataTypeGuid }, Value = DatumIzdajeRacuna.ToString("yyyy-MM-ddTHH\\:mm\\:ss.fffffffzzz") };
+                }
+                if (md.Label == "Leto")
+                {
+                    aMd = new CustomMetadata { CustomMetadataType = new CustomMetadataType { CustomMetadataTypeGuid = md.CustomMetadataTypeGuid }, Value = Leto.ToString() };
+                }
+                if (aMd != null)
+                {
+                    aMetadata.CustomMetadatas.Add(aMd);
+                }
+            }
 
             byte[] bytes = File.ReadAllBytes(fi.FullName);
             return client.AddDocument(token,  bytes, aMetadata);
-
-            // aMetadata.CustomMetadatas.Add(new CustomMetadata { CustomMetadataType =  } })
-
-
-            /*
-            root.Add(new XElement(posta + "SifraDobavitelja", SifraDobavitelja));
-            root.Add(new XElement(posta + "DavcnaStevilkaDobavitelja", DavcnaStevilkaDobavitelja));
-            root.Add(new XElement(posta + "StevilkaRacuna", StevilkaRacuna));
-            root.Add(new XElement(posta + "DatumIzdajeRacuna", DatumIzdajeRacuna));
-            root.Add(new XElement(posta + "Leto", Leto));
-            */
         }
-
-        /*
-        private static Guid SendLogicaDocument(IEnumerable<FileInfo> files, string Naziv, string Koda, string NazivDobavitelja, string SifraDobavitelja, 
-            string DavcnaStevilkaDobavitelja, string StevilkaRacuna, DateTime DatumIzdajeRacuna, int Leto, string Node, bool debug)
-        {
-            XNamespace posta = "http://schemas.posta.si/earchive/sendldoc.xsd";
-            var PDocs = new XElement(posta + "PDocs");
-
-            XElement root = new XElement(posta + "LDoc", null, new XAttribute("version", "1.0"),
-                PDocs
-            );
-
-            foreach (var fi in files)
-            {
-                byte[] data = File.ReadAllBytes(fi.FullName);
-                var fileGuid = Guid.NewGuid();
-
-                var idString = "Id-" + fileGuid.ToString();
-
-                PDocs.Add(new XElement(posta + "PDoc",
-                    new XElement(posta + "Binary", "true"),
-                    new XElement(posta + "DataBinary", Convert.ToBase64String(data), new XAttribute("Id", idString)),
-                    new XElement(posta + "Filename", fi.Name),
-                    new XElement(posta + "FileExtension", fi.Extension),
-                    new XElement(posta + "FormatCode", "??"),
-                    new XElement(posta + "Signed", false),
-                    new XElement(posta + "Encrypted", false)
-                ));
-            }
-
-            root.Add(new XElement(posta + "Nodes",
-                new XElement(posta + "Node", 
-                    new XElement(posta + "Code", Node))));
-
-            root.Add(new XElement(posta + "Label", Naziv));
-            root.Add(new XElement(posta + "Code", Koda));
-            root.Add(new XElement(posta + "Version", 1));
-            root.Add(new XElement(posta + "Subversion", 0));
-
-            root.Add(new XElement(posta + "NazivDobavitelja", NazivDobavitelja));
-            root.Add(new XElement(posta + "SifraDobavitelja", SifraDobavitelja));
-            root.Add(new XElement(posta + "DavcnaStevilkaDobavitelja", DavcnaStevilkaDobavitelja));
-            root.Add(new XElement(posta + "StevilkaRacuna", StevilkaRacuna));
-            root.Add(new XElement(posta + "DatumIzdajeRacuna", DatumIzdajeRacuna));
-            root.Add(new XElement(posta + "Leto", Leto));
-
-            if (debug)
-            {
-                log.Debug(root.ToXmlElement().OuterXml);
-            }
-
-            // XmlElement final = GetElement("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + root.ToXmlElement().OuterXml);
-            throw new NotImplementedException();
-            return Guid.NewGuid(); 
-        }*/
 
         private static EAAuth GetAuthClient(string findCertificateByValue, bool isDevelopment)
         {
@@ -278,6 +230,13 @@ namespace FinesaPosta
                 foreach(var n in nodes)
                 {
                     log.Info($"{n.Code} {n.NodeGuid} {n.Label}");
+                }
+                log.Info($"------------------------");
+
+                var metas  = client.GetCustomMetadataTypes(tokenClient.GetBearerToken());
+                foreach (var m in metas)
+                {
+                    log.Info($"{m.Label} {m.DataType} {m.CustomMetadataTypeGuid}");
                 }
             }
             catch (Exception ex)
