@@ -178,7 +178,7 @@ namespace FinesaPosta
                 }
                 if (md.Label == "Datum izdaje računa")
                 {
-                    // aMd = new CustomMetadata { CustomMetadataType = new CustomMetadataType { CustomMetadataTypeGuid = md.CustomMetadataTypeGuid }, Value = DatumIzdajeRacuna.ToString("yyyy-MM-ddTHH\\:mm\\:ss.fffffffzzz") };
+                    aMd = new CustomMetadata { CustomMetadataType = new CustomMetadataType { CustomMetadataTypeGuid = md.CustomMetadataTypeGuid }, Value = DatumIzdajeRacuna.ToString("yyyy-MM-ddThh:mm:ss") };
                 }
                 if (md.Label == "Leto")
                 {
@@ -324,9 +324,6 @@ namespace FinesaPosta
                     (ListNodesOptions opts) => ListNodesAndReturnExitCode(opts),
                     errs => 1
                 );
-            
-            log.Info("Press any key.");
-            Console.ReadKey();
             return exitCode;
         }
     }
