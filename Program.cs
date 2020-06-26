@@ -287,15 +287,24 @@ namespace FinesaPosta
             using (X509Store storex = new X509Store(StoreName.My, StoreLocation.CurrentUser))
             {
                 storex.Open(OpenFlags.ReadOnly);
-                X509Certificate2Collection certificatesx = storex.Certificates.Find(X509FindType.FindBySerialNumber, findByValue, true);
-
-                if (certificatesx == null || certificatesx.Count != 1)
+                var c1 = storex.Certificates.Find(X509FindType.FindBySerialNumber, findByValue, false);
+                var c2 = storex.Certificates.Find(X509FindType.FindByThumbprint, findByValue, false);
+                X509Certificate2 cert = null;
+                if (c1 != null && c1.Count == 1)
                 {
+                    cert = c1[0];
+                    log.Info($"FoundBySerialNumber {cert.Subject}");
+                }
+                if (c2 != null && c2.Count == 1)
+                {
+                    cert = c2[0];
+                    log.Info($"FoundByThumbprint {cert.Subject}");
+                }
+                if (cert == null)
+                {
+                    log.Error($"Certificate not found. FindBySerialNumber, FindByThumbprint, includeInvalid certificated. Search string: {findByValue} ");
                     throw new Exception("Certificate not found.");
                 }
-
-                X509Certificate2 cert = certificatesx[0];
-                
                 storex.Close();
                 return cert;
             }
